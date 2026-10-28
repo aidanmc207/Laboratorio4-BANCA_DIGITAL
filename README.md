@@ -1,14 +1,61 @@
-# Laboratorio No.4 — BANCA_DIGITAL
+# Laboratorios 4 y 5 — BANCA_DIGITAL
 
 IF0010 Bases de Datos II — UCR, Sede del Atlántico, II Ciclo 2026
-Tema: concurrencia, transacciones, manejo de errores, funciones y procedimientos.
+
+- **Laboratorio 4:** concurrencia, transacciones, manejo de errores, funciones y procedimientos.
+- **Laboratorio 5:** seguridad: logins, usuarios, roles y permisos (`GRANT`, `REVOKE` y `DENY`).
 
 ## Archivos
 
 | Archivo | Contenido |
 |---|---|
 | `BANCA_DIGITAL.sql` | Crea la base de datos, las tablas, los datos de prueba y `dbo.ReiniciarDatos`. |
-| `Laboratorio4_Solucion.sql` | Solución de los ejercicios 1 al 14: transacciones, `TRY...CATCH`, `dbo.CalcularComision`, `dbo.EstadoCuenta`, `dbo.Depositar`, `dbo.Retirar` y `dbo.Transferir`. |
+| `Laboratorio4_Solucion.sql` | Lab 4: solución de los ejercicios 1 al 14: transacciones, `TRY...CATCH`, `dbo.CalcularComision`, `dbo.EstadoCuenta`, `dbo.Depositar`, `dbo.Retirar` y `dbo.Transferir`. |
+| `BANCA_DIGITAL_NUEVOS_OBJETOS.sql` | Lab 5: objetos de prueba (`vw_ResumenClientes`, `fn_FormatearMonto`, `sp_ConsultarMovimientos`). |
+| `Laboratorio5_Solucion.sql` | Lab 5: solución de los ejercicios 1 al 5, con pruebas usando `EXECUTE AS` / `REVERT`. |
+
+---
+
+# Laboratorio No.5 — Seguridad
+
+## Cómo ejecutarlo
+
+1. `BANCA_DIGITAL.sql`
+2. `BANCA_DIGITAL_NUEVOS_OBJETOS.sql`
+3. `Laboratorio5_Solucion.sql`. Se puede ejecutar varias veces porque al inicio elimina los logins, usuarios, roles y el esquema creados antes.
+
+Cada ejercicio va seguido de un bloque `-- PRUEBA` que suplanta al usuario con `EXECUTE AS USER` y vuelve a `dbo` con `REVERT`. Los resultados y los errores que se obtienen sirven como evidencia para el PDF.
+
+| Error | Significado |
+|---|---|
+| 229 | Permiso denegado sobre el objeto (`SELECT`, `INSERT`, `UPDATE`, `DELETE`, `EXECUTE`). |
+| 230 | Permiso denegado sobre una columna (por ejemplo, `Cedula` o `Saldo`). |
+| 262 | Permiso `CREATE ...` denegado en la base de datos. |
+| 1088 | Sin permiso `ALTER` sobre la tabla. |
+
+## Principales y permisos
+
+| Principal | Tipo | Detalle |
+|---|---|---|
+| `login_auditor` / `usr_auditor` | Login + usuario | Miembro de `Rol_Auditoria` |
+| `login_cajero` / `usr_cajero` | Login + usuario | Miembro de `Rol_Operadores` |
+| `login_soporte` / `usr_soporte` | Login + usuario | Apoyo para el ejercicio 3.5 (permisos por columna) |
+| `login_admin` / `usr_admin` | Login + usuario | Miembro de `Rol_Administracion`, apoyo para el ejercicio 4.3 |
+
+Contraseña de todos los logins: `fg46qa95AB++*`.
+
+## Notas
+
+- **3.6:** Para que `usr_cajero` pueda filtrar con `WHERE NumeroCuenta = ...` necesita `SELECT` sobre las columnas del filtro. Por eso se le da `SELECT` solo sobre `CuentaID`, `NumeroCuenta` y `Estado`. Puede cambiar `Estado`, pero no `Saldo` ni `Moneda` (error 230).
+- **3.7:** El `DENY` directo al usuario tiene precedencia sobre el `GRANT` que hereda del rol.
+- **4.1 y 4.2:** Por el encadenamiento de propiedad, dbo es dueño del procedimiento, de la vista y de las tablas. Por eso el cajero consulta los datos a través de esos objetos aunque no tenga `SELECT` (o tenga `DENY`) sobre las tablas base.
+- **4.3:** `dbo.ReiniciarDatos` usa `SET IDENTITY_INSERT`, que exige `ALTER` sobre la tabla y no está cubierto por el encadenamiento de propiedad. Por eso `Rol_Administracion` recibe `ALTER` sobre `Clientes` y `Cuentas`.
+- **5.x:** Los permisos `CREATE VIEW/PROCEDURE/FUNCTION/TABLE` requieren además `ALTER` sobre el esquema donde se crea el objeto. Eso se cubre con el ejercicio 5.4 (`dbo`) y el 5.9 (`AuditoriaLocal`).
+- **`fn_FormatearMonto`:** Usa el literal `'₡ '` sin prefijo `N`. Con una intercalación que no sea Unicode, el símbolo puede verse como `¢` o `?`.
+
+---
+
+# Laboratorio No.4
 
 ## Cómo ejecutarlo
 
