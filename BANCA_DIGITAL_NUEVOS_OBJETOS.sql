@@ -1,4 +1,4 @@
-USE BANCA_DIGITAL;
+USE BANCA_DIGITAL_C4H845;
 GO
 
 -- 1. Vista: Resumen de clientes y cuentas activas

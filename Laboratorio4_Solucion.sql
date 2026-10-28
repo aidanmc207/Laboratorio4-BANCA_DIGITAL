@@ -2,7 +2,7 @@
 -- LABORATORIO No.4 - SOLUCION
 -- TRANSACCIONES, CONCURRENCIA, MANEJO DE ERRORES,
 -- FUNCIONES Y PROCEDIMIENTOS ALMACENADOS
--- Base de datos: BANCA_DIGITAL
+-- Base de datos: BANCA_DIGITAL_C4H845
 -- IF0010 Bases de Datos II - UCR
 --
 -- Requisito: ejecutar primero BANCA_DIGITAL.sql
@@ -10,7 +10,7 @@
 -- comentados (/* ... */) para copiarlos en la sesion correspondiente.
 -- =====================================================================
 
-USE BANCA_DIGITAL;
+USE BANCA_DIGITAL_C4H845;
 GO
 
 -- =====================================================================

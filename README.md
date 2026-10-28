@@ -1,4 +1,4 @@
-# Laboratorios 4 y 5 — BANCA_DIGITAL
+# Laboratorios 4 y 5 — BANCA_DIGITAL_C4H845
 
 IF0010 Bases de Datos II — UCR, Sede del Atlántico, II Ciclo 2026
 

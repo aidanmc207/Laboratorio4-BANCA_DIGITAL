@@ -1,7 +1,7 @@
 -- =====================================================================
 -- LABORATORIO No.5 - SOLUCION
 -- SEGURIDAD: LOGINS, USUARIOS, ROLES Y PERMISOS (GRANT, REVOKE Y DENY)
--- Base de datos: BANCA_DIGITAL
+-- Base de datos: BANCA_DIGITAL_C4H845
 -- IF0010 Bases de Datos II - UCR
 --
 -- Requisitos (en este orden):
@@ -17,7 +17,7 @@
 -- =====================================================================
 -- LIMPIEZA: permite ejecutar el script varias veces
 -- =====================================================================
-USE BANCA_DIGITAL;
+USE BANCA_DIGITAL_C4H845;
 GO
 
 DROP VIEW  IF EXISTS AuditoriaLocal.vw_SaldosPorMoneda;
@@ -55,31 +55,31 @@ GO
 -- 1. Login a nivel de servidor para el auditor
 CREATE LOGIN login_auditor
     WITH PASSWORD = 'fg46qa95AB++*',
-         DEFAULT_DATABASE = BANCA_DIGITAL,
+         DEFAULT_DATABASE = BANCA_DIGITAL_C4H845,
          CHECK_POLICY = ON;
 GO
 
 -- 3. Login para el cajero (misma contrasena)
 CREATE LOGIN login_cajero
     WITH PASSWORD = 'fg46qa95AB++*',
-         DEFAULT_DATABASE = BANCA_DIGITAL,
+         DEFAULT_DATABASE = BANCA_DIGITAL_C4H845,
          CHECK_POLICY = ON;
 GO
 
 -- Logins de apoyo para el Ejercicio 3.5 (soporte) y 4.3 (administrador)
 CREATE LOGIN login_soporte
     WITH PASSWORD = 'fg46qa95AB++*',
-         DEFAULT_DATABASE = BANCA_DIGITAL,
+         DEFAULT_DATABASE = BANCA_DIGITAL_C4H845,
          CHECK_POLICY = ON;
 GO
 
 CREATE LOGIN login_admin
     WITH PASSWORD = 'fg46qa95AB++*',
-         DEFAULT_DATABASE = BANCA_DIGITAL,
+         DEFAULT_DATABASE = BANCA_DIGITAL_C4H845,
          CHECK_POLICY = ON;
 GO
 
-USE BANCA_DIGITAL;
+USE BANCA_DIGITAL_C4H845;
 GO
 
 -- 2. Usuario de BD asociado al login del auditor
