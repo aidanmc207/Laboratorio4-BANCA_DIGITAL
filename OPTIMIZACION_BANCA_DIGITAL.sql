@@ -149,10 +149,7 @@ GO
 -- Resultado esperado: el plan muestra un Clustered Index Scan sobre
 -- Movimientos (recorre TODA la tabla). En la pestana Mensajes, las
 -- "logical reads" son altas (cientos). Anote ese numero para el Ej. 2.
---
--- Observacion: el operador mas costoso (100 %) es el Clustered Index Scan
--- sobre PK de Movimientos. Lee las ~100 000 filas para devolver solo 34.
--- Logical reads obtenidas: 1014.
+-- Obtenido: Clustered Index Scan (operador mas costoso), 1014 logical reads.
 
 
 -- ---------------------------------------------------------------------
@@ -163,11 +160,7 @@ GO
 -- Ejercicio 1 y compare.
 -- ---------------------------------------------------------------------
 -- >>> ESCRIBA AQUI SU SOLUCION <<<
-IF NOT EXISTS (SELECT 1 FROM sys.indexes
-               WHERE name = 'IX_Movimientos_CuentaID'
-                 AND object_id = OBJECT_ID('dbo.Movimientos'))
-    CREATE NONCLUSTERED INDEX IX_Movimientos_CuentaID
-        ON dbo.Movimientos (CuentaID);
+CREATE NONCLUSTERED INDEX IX_Movimientos_CuentaID ON dbo.Movimientos (CuentaID);
 
 GO
 
@@ -196,13 +189,10 @@ GO
 -- "logical reads" bajan drasticamente respecto al Ejercicio 1.
 -- Pregunta 1: ¿cuantas "logical reads" tuvo la consulta en el Ejercicio 1
 -- y cuantas ahora? ¿Que operador reemplazo al scan?
--- Respuesta: en el Ejercicio 1 hubo 1014 logical reads y ahora 115 (casi
--- 9 veces menos). El Clustered Index Scan fue reemplazado por un Index Seek
--- sobre IX_Movimientos_CuentaID, mas un Key Lookup (Clustered) por cada fila
--- para traer TipoMovimiento, Monto y Fecha, que no estan en el indice. El
--- indice hace la diferencia porque guarda CuentaID ordenado: el motor
--- navega el arbol B directo a las 34 filas de la cuenta 500 en lugar de
--- recorrer las ~1000 paginas de la tabla.
+-- Respuesta: Ejercicio 1 = 1014 logical reads; ahora = 115. El scan fue
+-- reemplazado por un Index Seek (con Key Lookup). El indice tiene CuentaID
+-- ordenado, asi que el motor va directo a las filas de la cuenta 500 en
+-- vez de recorrer toda la tabla.
 
 
 -- =====================================================================
@@ -234,19 +224,14 @@ GO
 -- Pregunta 2: ¿cual es la diferencia entre "CPU time" y "elapsed time"?
 -- Pregunta 3: ¿sobre cual de las tres tablas se hicieron mas lecturas
 -- logicas y por que?
---
--- Metricas obtenidas: Movimientos = 115 logical reads (scan count 1),
--- Cuentas = 2, Clientes = 2 (scan count 0: acceso por seek);
+-- Obtenido: Movimientos = 115, Cuentas = 2, Clientes = 2 logical reads;
 -- CPU time = 0 ms, elapsed time = 0-2 ms.
--- Respuesta 2: el CPU time es el tiempo que el procesador trabajo
--- realmente en la consulta; el elapsed time es el tiempo total de reloj,
--- de principio a fin, que incluye ademas esperas (disco, bloqueos, red y
--- envio de resultados). Por eso elapsed suele ser mayor o igual que CPU
--- (en planes paralelos el CPU puede superar al elapsed).
--- Respuesta 3: sobre Movimientos (115 contra 2 y 2). Es la tabla grande
--- (~100 000 filas) y la consulta lee 34 filas de ella: el Index Seek mas
--- un Key Lookup por cada fila. De Cuentas y Clientes solo se lee una
--- fila de cada una por su llave primaria (Clustered Index Seek).
+-- Respuesta 2: CPU time es el tiempo que el procesador trabajo en la
+-- consulta; elapsed time es el tiempo total transcurrido, incluyendo
+-- esperas (disco, bloqueos, red).
+-- Respuesta 3: en Movimientos, porque es la tabla grande y de ella se leen
+-- todas las filas de la cuenta 500; de Cuentas y Clientes solo se lee una
+-- fila por su llave primaria.
 
 
 -- ---------------------------------------------------------------------
@@ -271,18 +256,6 @@ GO
 -- >>> ESCRIBA AQUI SU SOLUCION <<<
 SET STATISTICS IO ON;
 GO
-
--- Consulta original (para comparar): 1014 + 30 + 19 = 1063 logical reads
--- y devuelve las ~100 000 filas con todas las columnas.
-SELECT *
-FROM dbo.Movimientos m
-INNER JOIN dbo.Cuentas  c  ON c.CuentaID  = m.CuentaID
-INNER JOIN dbo.Clientes cl ON cl.ClienteID = c.ClienteID;
-GO
-
--- Consulta reescrita: proyeccion temprana (solo 4 columnas) y seleccion
--- temprana (CuentaID = 500 y TipoMovimiento = 'Deposito').
--- 115 + 2 + 2 = 119 logical reads; solo los depositos de la cuenta 500.
 SELECT c.NumeroCuenta, cl.Nombre, m.TipoMovimiento, m.Monto
 FROM dbo.Movimientos m
 INNER JOIN dbo.Cuentas  c  ON c.CuentaID  = m.CuentaID
@@ -290,22 +263,18 @@ INNER JOIN dbo.Clientes cl ON cl.ClienteID = c.ClienteID
 WHERE m.CuentaID = 500
   AND m.TipoMovimiento = 'Deposito';
 GO
-
 SET STATISTICS IO OFF;
 GO
+-- Obtenido: original = 1063 logical reads; reescrita = 119.
 
 -- Resultado esperado: comparada con el SELECT * sin filtro, la consulta
 -- reescrita hace muchas menos lecturas logicas y devuelve solo las filas
 -- y columnas necesarias.
 -- Pregunta 4: ¿por que "SELECT *" sin filtro es la peor opcion en una
 -- tabla de 100 000 filas, incluso si luego la aplicacion ignora columnas?
--- Respuesta: porque el costo ya se pago en el servidor antes de que la
--- aplicacion descarte nada. Sin WHERE el motor debe recorrer TODA la tabla
--- (scan, 1063 lecturas contra 119) y no puede usar ningun indice; con
--- SELECT * cada fila es mas ancha, asi que se mueve mas memoria y mas
--- datos por la red, y tampoco se puede aprovechar un indice cubriente
--- (obliga a Key Lookups o a scans). Ademas SELECT * es fragil: si se
--- agregan columnas a la tabla, la consulta las trae sin que nadie lo pida.
+-- Respuesta: porque el servidor ya hizo todo el trabajo antes de que la
+-- aplicacion descarte columnas: sin filtro recorre toda la tabla y no usa
+-- indices, y con todas las columnas mueve mas datos en memoria y por la red.
 
 
 -- =====================================================================
@@ -341,14 +310,11 @@ GO
 ALTER INDEX IX_Movimientos_CuentaID ON dbo.Movimientos REBUILD;
 
 -- Tabla de decision del enunciado:
--- Indice              Fragm.    Accion          Sintaxis SQL
--- IX_Movimientos_01    6,00 %   No hacer nada   (ninguna)
--- IX_Movimientos_02   16,33 %   REORGANIZE      ALTER INDEX IX_Movimientos_02 ON dbo.Movimientos REORGANIZE;
--- IX_Saldos_01        86,95 %   REBUILD         ALTER INDEX IX_Saldos_01 ON dbo.Cuentas REBUILD;
--- IX_Saldos_02        26,63 %   REORGANIZE      ALTER INDEX IX_Saldos_02 ON dbo.Cuentas REORGANIZE;
--- IX_Clientes_01      27,56 %   REORGANIZE      ALTER INDEX IX_Clientes_01 ON dbo.Clientes REORGANIZE;
--- (Esos cinco indices son ejemplos del enunciado y no existen en la base;
---  se asume que los IX_Saldos_* pertenecen a dbo.Cuentas, donde esta Saldo.)
+-- IX_Movimientos_01   6,00 %  -> No hacer nada
+-- IX_Movimientos_02  16,33 %  -> ALTER INDEX IX_Movimientos_02 ON dbo.Movimientos REORGANIZE;
+-- IX_Saldos_01       86,95 %  -> ALTER INDEX IX_Saldos_01 ON dbo.Cuentas REBUILD;
+-- IX_Saldos_02       26,63 %  -> ALTER INDEX IX_Saldos_02 ON dbo.Cuentas REORGANIZE;
+-- IX_Clientes_01     27,56 %  -> ALTER INDEX IX_Clientes_01 ON dbo.Clientes REORGANIZE;
 
 GO
 -- Nota: en esta base recien cargada es probable que la fragmentacion
@@ -357,13 +323,10 @@ GO
 -- consulta en vivo sirve para aprender a leer la vista.
 -- Pregunta 5: ¿por que REORGANIZE se puede correr en horario laboral pero
 -- REBUILD (en ediciones sin opcion ONLINE) se programa de madrugada?
--- Respuesta: REORGANIZE es una operacion siempre en linea: reordena y
--- compacta las paginas hoja del indice poco a poco, con bloqueos cortos,
--- y se puede detener sin perder lo avanzado, asi que los usuarios siguen
--- trabajando. REBUILD destruye y vuelve a crear el indice completo; sin
--- ONLINE = ON mantiene bloqueos sobre la tabla mientras dura (impide
--- escrituras y, en el indice clusterizado, tambien lecturas) y consume
--- mucho CPU, E/S y log. Por eso se programa cuando casi no hay usuarios.
+-- Respuesta: REORGANIZE trabaja en linea con bloqueos cortos, asi que los
+-- usuarios pueden seguir trabajando. REBUILD reconstruye el indice completo
+-- y, sin ONLINE, bloquea la tabla mientras dura; por eso se hace cuando
+-- casi no hay usuarios.
 
 
 -- ---------------------------------------------------------------------
@@ -383,17 +346,14 @@ GO
 -- Resultado esperado: como 'Deposito' representa cerca de la mitad de la
 -- tabla (baja selectividad), un indice sobre TipoMovimiento no ayudaria;
 -- el optimizador usaria un scan de todas formas.
---
--- Observacion: el plan usa un Clustered Index Scan (1014 logical reads)
--- y cuenta 50 007 depositos de 100 008 filas (~50 %).
+-- Obtenido: 50 007 depositos (~50 %) con un Clustered Index Scan.
 --
 -- Tabla de criterio del enunciado:
--- Escenario                          ¿Procede?  Justificacion
--- Llave primaria de tabla grande     Si         Identifica cada fila y se usa en busquedas y JOIN; SQL Server la indexa automaticamente.
--- Llave foranea usada en muchos JOIN Si         SQL Server no la indexa solo; el indice convierte los scans del JOIN en seeks.
--- Columna de estado (Deposito/Retiro) No        Baja selectividad (~50 % por valor): el optimizador hara scan igual.
--- Columna de texto largo (Descripcion) No       Indice muy pesado, poco selectivo y caro de mantener; los LIKE '%texto%' no lo aprovechan.
--- Correo (valores unicos) en WHERE   Si         Alta selectividad: cada busqueda devuelve una fila con un Index Seek (idealmente UNIQUE).
+-- Llave primaria de una tabla grande  -> Si: se usa para buscar y unir filas.
+-- Llave foranea usada en muchos JOIN  -> Si: acelera los JOIN.
+-- Columna de estado (Deposito/Retiro) -> No: baja selectividad, se hace scan igual.
+-- Columna de texto largo (Descripcion)-> No: indice pesado y poco util.
+-- Correo (valores unicos) en el WHERE -> Si: alta selectividad, permite Index Seek.
 
 
 -- =====================================================================
@@ -408,26 +368,15 @@ GO
 -- 6. De un ejemplo de columna donde NO conviene crear un indice.
 --
 -- Respuestas:
--- 1. De derecha a izquierda y de arriba hacia abajo: los operadores de la
---    derecha leen los datos y pasan las filas hacia el SELECT de la izquierda.
--- 2. Un Scan recorre todas las filas o paginas de la tabla o del indice; un
---    Seek usa el arbol B del indice para ir directo solo a las filas que
---    cumplen el filtro. El Seek lee muchas menos paginas en tablas grandes.
--- 3. (a) En el plan, un Table Scan / Clustered Index Scan con alto % de costo
---    que devuelve pocas filas, o el aviso verde "Missing Index". (b) En
---    STATISTICS IO, muchas logical reads para muy pocas filas devueltas
---    (1014 lecturas para 34 filas en el Ejercicio 1).
--- 4. Proyeccion temprana: traer solo las 4 columnas necesarias, lo que
---    reduce el ancho de las filas, la memoria y el trafico de red. Seleccion
---    temprana: filtrar por CuentaID = 500 y TipoMovimiento = 'Deposito', lo
---    que descarta filas al inicio y permite usar el Index Seek
---    (1063 -> 119 logical reads).
--- 5. REORGANIZE con fragmentacion entre 10 % y 30 % (en linea, liviano).
---    REBUILD con fragmentacion mayor a 30 % (reconstruye el indice completo y
---    actualiza sus estadisticas; sin ONLINE bloquea, por eso va de madrugada).
---    Menos de 5-10 %: no hacer nada.
--- 6. TipoMovimiento de Movimientos (o Estado de Cuentas): pocos valores
---    distintos y cada uno abarca gran parte de la tabla (baja selectividad).
+-- 1. De derecha a izquierda y de arriba hacia abajo.
+-- 2. El Scan recorre toda la tabla; el Seek va directo a las filas que
+--    cumplen el filtro usando un indice.
+-- 3. Un Table Scan / Clustered Index Scan costoso que devuelve pocas filas,
+--    y muchas logical reads en STATISTICS IO.
+-- 4. Proyeccion temprana (solo las columnas necesarias: filas mas livianas)
+--    y seleccion temprana (filtrar pronto: menos filas que procesar).
+-- 5. REORGANIZE con fragmentacion entre 10 % y 30 %; REBUILD con mas de 30 %.
+-- 6. TipoMovimiento: tiene pocos valores distintos (baja selectividad).
 
 
 -- =====================================================================
