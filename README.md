@@ -13,6 +13,21 @@ IF0010 Bases de Datos II — UCR, Sede del Atlántico, II Ciclo 2026
 | `Laboratorio4_Solucion.sql` | Lab 4: solución de los ejercicios 1 al 14: transacciones, `TRY...CATCH`, `dbo.CalcularComision`, `dbo.EstadoCuenta`, `dbo.Depositar`, `dbo.Retirar` y `dbo.Transferir`. |
 | `BANCA_DIGITAL_NUEVOS_OBJETOS.sql` | Lab 5: objetos de prueba (`vw_ResumenClientes`, `fn_FormatearMonto`, `sp_ConsultarMovimientos`). |
 | `Laboratorio5_Solucion.sql` | Lab 5: solución de los ejercicios 1 al 5, con pruebas usando `EXECUTE AS` / `REVERT`. |
+| `OPTIMIZACION_BANCA_DIGITAL.sql` | Lab 6: script del enunciado resuelto. El código está en cada `>>> ESCRIBA AQUI SU SOLUCION <<<` y las respuestas debajo de cada pregunta. |
+
+---
+
+# Laboratorio No.6 — Optimización de consultas e índices
+
+1. Ejecutar `BANCA_DIGITAL.sql` **justo antes**. La Parte 0 supone una base recién creada: si `ClienteID` tiene huecos, falla con un error de llave foránea.
+2. Ejecutar `OPTIMIZACION_BANCA_DIGITAL.sql` en SSMS con el plan real activado (Ctrl + M).
+
+| Medición | Logical reads |
+|---|---|
+| Ej. 1: `CuentaID = 500` sin índice (Clustered Index Scan) | 1014 |
+| Ej. 2: con `IX_Movimientos_CuentaID` (Index Seek + Key Lookup) | 115 |
+| Ej. 4: `SELECT *` original sin filtro | 1063 (1014 + 30 + 19) |
+| Ej. 4: consulta reescrita | 119 (115 + 2 + 2) |
 
 ---
 
